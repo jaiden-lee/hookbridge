@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package bridge;
+option go_package = "api/";
+
+service BridgeService {
+    // Flipped because we want SERVER to send RESPONSES; while CLIENT sends REQUESTS
+    rpc Stream(stream HTTPResponse) returns (stream HTTPRequest);
+}
+
+
+// later add X-Forwarded-For header for webhook provider IP address
+// acts like a reverse proxy
+message HTTPRequest {
+    string flow_id = 1;
+    string method = 2;
+    string url = 3;
+    map<string, string> headers = 4;
+    bytes body = 5;
+}
+
+message HTTPResponse {
+    string flow_id = 1;
+    int32 status_code = 2;
+    map<string, string> headers = 3;
+    bytes body = 4;
+}
