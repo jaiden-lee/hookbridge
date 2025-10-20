@@ -8,7 +8,12 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetProjectByID(projectID string) (*Project, error) {
+// namespacing; access like db.ProjectService.CreateProject(...)
+type projectServiceStruct struct{}
+
+var ProjectService = projectServiceStruct{}
+
+func (s projectServiceStruct) GetProjectByID(projectID string) (*Project, error) {
 	database := GetDB()
 
 	var project Project
@@ -23,7 +28,7 @@ func GetProjectByID(projectID string) (*Project, error) {
 	return &project, nil
 }
 
-func GetProjectsByUser(userID string) ([]Project, error) {
+func (s projectServiceStruct) GetProjectsByUser(userID string) ([]Project, error) {
 	database := GetDB()
 
 	var projects []Project
@@ -38,8 +43,8 @@ func GetProjectsByUser(userID string) ([]Project, error) {
 	return projects, nil
 }
 
-func GetProjectByIDAndPassword(projectID string, password string) (*Project, error) {
-	project, err := GetProjectByID(projectID)
+func (s projectServiceStruct) GetProjectByIDAndPassword(projectID string, password string) (*Project, error) {
+	project, err := s.GetProjectByID(projectID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrProjectNotFound
@@ -55,7 +60,7 @@ func GetProjectByIDAndPassword(projectID string, password string) (*Project, err
 	return project, nil
 }
 
-func CreateProject(userID string, name string, password string) (*Project, error) {
+func (s projectServiceStruct) CreateProject(userID string, name string, password string) (*Project, error) {
 	database := GetDB()
 
 	hashedPassword, err := hashPassword(password)
@@ -87,7 +92,7 @@ func CreateProject(userID string, name string, password string) (*Project, error
 	return &project, nil
 }
 
-func ChangeProjectPassword(projectID string, userID string, newPassword string) error {
+func (s projectServiceStruct) ChangeProjectPassword(projectID string, userID string, newPassword string) error {
 	database := GetDB()
 
 	hashedPassword, err := hashPassword(newPassword)
@@ -111,7 +116,7 @@ func ChangeProjectPassword(projectID string, userID string, newPassword string) 
 	return nil // if no error, then success
 }
 
-func DeleteProject(projectID string, userID string) error {
+func (s projectServiceStruct) DeleteProject(projectID string, userID string) error {
 	database := GetDB()
 
 	result := database.Where("user_id = ? AND user_id = ?", projectID, userID).
