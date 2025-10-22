@@ -22,10 +22,10 @@ func NewRouter() *gin.Engine {
 	projectRoutes := router.Group("/api/projects")
 	projectRoutes.Use(middleware.AuthMiddleware())
 	{
-		projectRoutes.POST("")
-		projectRoutes.GET("")
-		projectRoutes.PATCH("/:project_id/password")
-		projectRoutes.DELETE("/:project_id")
+		projectRoutes.POST("", handlers.ProjectHandlers.CreateProjectHandler)
+		projectRoutes.GET("", handlers.ProjectHandlers.GetProjectsHandler)
+		projectRoutes.PATCH("/:project_id/password", handlers.ProjectHandlers.ChangeProjectPasswordHandler)
+		projectRoutes.DELETE("/:project_id", handlers.ProjectHandlers.DeleteProjectHandler)
 	}
 
 	connectionRoutes := router.Group("/api/connect")

@@ -11,10 +11,22 @@ All clients must include Authorization Header:
 }
 */
 
-func CreateProjectHandler(c *gin.Context) {
+type projectHandlersStruct struct{}
+
+var ProjectHandlers = &projectHandlersStruct{}
+
+func (s *projectHandlersStruct) CreateProjectHandler(c *gin.Context) {
 
 }
 
-func GetProjectsHandler(c *gin.Context) {
+func (s *projectHandlersStruct) GetProjectsHandler(c *gin.Context) {
+
+}
+
+func (s *projectHandlersStruct) ChangeProjectPasswordHandler(c *gin.Context) {
+
+}
+
+func (s *projectHandlersStruct) DeleteProjectHandler(c *gin.Context) {
 
 }
