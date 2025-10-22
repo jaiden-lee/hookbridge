@@ -85,6 +85,15 @@ func (s *AuthServiceStruct) VerifyJWT(tokenB64 string) (*UserData, error) {
 		return nil, ErrInvalidJWT
 	}
 
+	exp, ok := claims["exp"].(float64)
+	if !ok {
+		return nil, ErrInvalidJWT
+	}
+
+	if time.Now().Unix() > int64(exp) {
+		return nil, ErrExpiredJWT
+	}
+
 	userID, ok := claims["user_id"].(string)
 	if !ok {
 		return nil, ErrInvalidJWT
