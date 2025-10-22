@@ -16,7 +16,7 @@ func NewRouter() *gin.Engine {
 
 	tunnelRoutes := router.Group("/tunnel")
 	{
-		tunnelRoutes.Any(":/project_id/*proxyPath")
+		tunnelRoutes.Any(":/project_id/*proxyPath", handlers.TunnelHandlers.WebhookForwardingHandler)
 	}
 
 	projectRoutes := router.Group("/api/projects")

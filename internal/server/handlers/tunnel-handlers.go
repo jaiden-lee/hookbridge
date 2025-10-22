@@ -8,6 +8,6 @@ type tunnelHandlersStruct struct{}
 
 var TunnelHandlers = &tunnelHandlersStruct{}
 
-func (s *tunnelHandlersStruct) ConnectToTunnelHandler(c *gin.Context) {
+func (s *tunnelHandlersStruct) WebhookForwardingHandler(c *gin.Context) {
 
 }
