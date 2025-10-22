@@ -105,7 +105,7 @@ func (s *AuthServiceStruct) VerifyJWT(tokenB64 string) (*UserData, error) {
 func (s *AuthServiceStruct) fetchJWKs() {
 	jwksURL, err := usermanagement.GetJWKSURL(s.ClientID)
 	if err != nil {
-		panic("failed ot fetch JWKs")
+		panic("failed to fetch JWKs")
 	}
 
 	jwks, err := keyfunc.Get(jwksURL.String(), keyfunc.Options{

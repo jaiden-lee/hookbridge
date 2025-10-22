@@ -30,8 +30,8 @@ func NewRouter() *gin.Engine {
 
 	connectionRoutes := router.Group("/api/connect")
 	{
-		connectionRoutes.POST("/:project_id")
-		connectionRoutes.GET("/:project_id/status")
+		connectionRoutes.POST("/:project_id", handlers.ConnectHandlers.ConnectToProjectHandler)
+		connectionRoutes.GET("/:project_id/status", handlers.ConnectHandlers.GetConnectionStatusHandler)
 	}
 
 	router.GET("/", handlers.RootHandler)
