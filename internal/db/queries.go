@@ -61,7 +61,21 @@ func (s projectServiceStruct) GetProjectByIDAndPassword(projectID string, passwo
 }
 
 func (s projectServiceStruct) CreateProject(userID string, name string, password string) (*Project, error) {
+	const minPasswordLength = 6
+
 	database := GetDB()
+
+	if !isValidASCII(password) {
+		return nil, ErrPasswordSpecialCharacters
+	}
+
+	if len(password) < minPasswordLength {
+		return nil, ErrPasswordTooShort
+	}
+
+	if len(name) == 0 {
+		return nil, ErrNoProjectNameSpecified
+	}
 
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
@@ -146,4 +160,13 @@ func hashPassword(password string) (string, error) {
 func checkPasswordHash(password string, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+func isValidASCII(s string) bool {
+	for _, r := range s {
+		if r > 127 { // non-ASCII
+			return false
+		}
+	}
+	return true
 }
