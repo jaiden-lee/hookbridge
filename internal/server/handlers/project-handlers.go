@@ -144,8 +144,42 @@ func (s *projectHandlersStruct) ChangeProjectPasswordHandler(c *gin.Context) {
 	})
 }
 
-func (s *projectHandlersStruct) DeleteProjectHandler(c *gin.Context) {
+type DeleteProjectRequest struct {
+	ID string `json:"id" binding:"required"`
+}
 
+func (s *projectHandlersStruct) DeleteProjectHandler(c *gin.Context) {
+	user, err := getUserFromContext(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	var request DeleteProjectRequest
+	err = c.ShouldBindJSON(&request)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	err = db.ProjectService.DeleteProject(request.ID, user.UserID)
+	if err != nil {
+		switch {
+		case errors.Is(err, db.ErrProjectNotFound):
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		default:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "project successfully deleted",
+	})
 }
 
 func getUserFromContext(c *gin.Context) (*utils.UserData, error) {
