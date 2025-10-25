@@ -31,7 +31,7 @@ type CreateProjectRequest struct {
 func (s *projectHandlersStruct) CreateProjectHandler(c *gin.Context) {
 	user, err := getUserFromContext(c)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 			"error": err.Error(),
 		})
 		return
