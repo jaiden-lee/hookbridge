@@ -32,6 +32,7 @@ var loginCmd = &cobra.Command{
 
 		if config.IsLoggedIn(user) {
 			fmt.Println("\nYou are already logged in as:", user.Email)
+			fmt.Println()
 			return nil
 		}
 
@@ -60,6 +61,7 @@ var loginCmd = &cobra.Command{
 
 		fmt.Println("\n✅ Login successful!")
 		fmt.Println("\n Logged in as:", tokenResponse.User.Email)
+		fmt.Println()
 
 		return nil
 	},

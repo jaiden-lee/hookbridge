@@ -70,3 +70,20 @@ func LoadUserConfig() (*UserConfig, error) {
 func IsLoggedIn(u *UserConfig) bool {
 	return u != nil && u.AccessToken != "" && u.RefreshToken != "" && u.Email != ""
 }
+
+func DeleteUserConfig() error {
+	path, err := GetUserConfigPath()
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ErrNotSignedIn
+		}
+		return err
+	}
+
+	return nil
+}
