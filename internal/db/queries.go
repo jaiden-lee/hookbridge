@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const minPasswordLength = 6
+
 // namespacing; access like db.ProjectService.CreateProject(...)
 type projectServiceStruct struct{}
 
@@ -61,7 +63,6 @@ func (s projectServiceStruct) GetProjectByIDAndPassword(projectID string, passwo
 }
 
 func (s projectServiceStruct) CreateProject(userID string, name string, password string) (*Project, error) {
-	const minPasswordLength = 6
 
 	database := GetDB()
 
@@ -108,6 +109,14 @@ func (s projectServiceStruct) CreateProject(userID string, name string, password
 
 func (s projectServiceStruct) ChangeProjectPassword(projectID string, userID string, newPassword string) error {
 	database := GetDB()
+
+	if !isValidASCII(newPassword) {
+		return ErrPasswordSpecialCharacters
+	}
+
+	if len(newPassword) < minPasswordLength {
+		return ErrPasswordTooShort
+	}
 
 	hashedPassword, err := hashPassword(newPassword)
 	if err != nil {

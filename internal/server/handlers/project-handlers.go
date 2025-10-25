@@ -95,8 +95,53 @@ func (s *projectHandlersStruct) GetProjectsHandler(c *gin.Context) {
 	})
 }
 
-func (s *projectHandlersStruct) ChangeProjectPasswordHandler(c *gin.Context) {
+type ChangeProjectRequest struct {
+	ID       string `json:"id" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
 
+func (s *projectHandlersStruct) ChangeProjectPasswordHandler(c *gin.Context) {
+	user, err := getUserFromContext(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	var request ChangeProjectRequest
+	err = c.ShouldBindJSON(&request)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	err = db.ProjectService.ChangeProjectPassword(request.ID, user.UserID, request.Password)
+	if err != nil {
+		if errors.Is(err, db.ErrProjectNotFound) {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"error": err.Error(),
+			})
+			return
+		} else if errors.Is(err, db.ErrPasswordSpecialCharacters) ||
+			errors.Is(err, db.ErrPasswordTooLong) ||
+			errors.Is(err, db.ErrPasswordTooShort) {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "project password changed successfully",
+	})
 }
 
 func (s *projectHandlersStruct) DeleteProjectHandler(c *gin.Context) {
