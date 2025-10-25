@@ -60,7 +60,7 @@ var loginCmd = &cobra.Command{
 		config.SaveUserConfig(&userConfig)
 
 		fmt.Println("\n✅ Login successful!")
-		fmt.Println("\n Logged in as:", tokenResponse.User.Email)
+		fmt.Println("\nLogged in as:", tokenResponse.User.Email)
 		fmt.Println()
 
 		return nil

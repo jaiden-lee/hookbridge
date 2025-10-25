@@ -6,16 +6,30 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/jaiden-lee/hookbridge/internal/cli/config"
 	"github.com/spf13/cobra"
 )
 
 // statusCmd represents the status command
 var statusCmd = &cobra.Command{
-	Use:   "status",
+	Use:   "account",
 	Short: "check if you are logged in and current account details",
 	Long:  `check if you are logged in and current account details`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("you are not currently logged in")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		user, err := config.LoadUserConfig()
+		if err != nil {
+			return err
+		}
+
+		if config.IsLoggedIn(user) {
+			fmt.Println("\nYou are logged in as:", user.Email)
+			fmt.Println()
+			return nil
+		}
+
+		fmt.Println("\nYou are not currently signed in")
+		fmt.Println()
+		return nil
 	},
 }
 
