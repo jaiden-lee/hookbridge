@@ -66,8 +66,33 @@ func (s *projectHandlersStruct) CreateProjectHandler(c *gin.Context) {
 	})
 }
 
-func (s *projectHandlersStruct) GetProjectsHandler(c *gin.Context) {
+type ProjectResponse struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
 
+func (s *projectHandlersStruct) GetProjectsHandler(c *gin.Context) {
+	user, err := getUserFromContext(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	projects, err := db.ProjectService.GetProjectsByUser(user.UserID)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	projectsResponse := toProjectResponseList(projects)
+
+	c.JSON(http.StatusOK, gin.H{
+		"projects": projectsResponse,
+	})
 }
 
 func (s *projectHandlersStruct) ChangeProjectPasswordHandler(c *gin.Context) {
@@ -90,4 +115,16 @@ func getUserFromContext(c *gin.Context) (*utils.UserData, error) {
 	}
 
 	return userData, nil
+}
+
+// ToResponseList converts a slice of Projects
+func toProjectResponseList(projects []db.Project) []ProjectResponse {
+	res := make([]ProjectResponse, len(projects))
+	for i, p := range projects {
+		res[i] = ProjectResponse{
+			ID:   p.ID,
+			Name: p.Name,
+		}
+	}
+	return res
 }

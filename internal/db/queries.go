@@ -32,7 +32,7 @@ func (s projectServiceStruct) GetProjectsByUser(userID string) ([]Project, error
 	database := GetDB()
 
 	var projects []Project
-	err := database.Find(&projects).Where("user_id = ?", userID).Error
+	err := database.Where("user_id = ?", userID).Find(&projects).Error
 	if err != nil {
 		return nil, err
 	}
