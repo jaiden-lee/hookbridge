@@ -4,6 +4,7 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jaiden-lee/hookbridge/internal/cli/config"
@@ -44,11 +45,24 @@ you must be signed in to use this command. `,
 			Password: projectPassword,
 		}
 
-		utils.PostJSONWithAuth(
+		body, err := utils.PostWithAuth(
 			config.APIBaseURL+"/api/projects",
 			requestBody,
 			user,
 		)
+
+		if err != nil {
+			return err
+		}
+
+		var response api.MessageResponse
+		if err := json.Unmarshal(body, &response); err != nil {
+			return err
+		}
+
+		fmt.Println("\n" + response.Message)
+		fmt.Println()
+		return nil
 	},
 }
 
