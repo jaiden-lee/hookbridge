@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package bridge;
-option go_package = "api/";
+option go_package = "proto/";
 
 service BridgeService {
     // Flipped because we want SERVER to send RESPONSES; while CLIENT sends REQUESTS

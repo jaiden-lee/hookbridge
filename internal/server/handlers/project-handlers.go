@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jaiden-lee/hookbridge/internal/db"
 	"github.com/jaiden-lee/hookbridge/internal/server/utils"
+	"github.com/jaiden-lee/hookbridge/pkg/api"
 )
 
 /*
@@ -23,11 +24,6 @@ type projectHandlersStruct struct{}
 
 var ProjectHandlers = &projectHandlersStruct{}
 
-type CreateProjectRequest struct {
-	Name     string `json:"name" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
-
 func (s *projectHandlersStruct) CreateProjectHandler(c *gin.Context) {
 	user, err := getUserFromContext(c)
 	if err != nil {
@@ -37,7 +33,7 @@ func (s *projectHandlersStruct) CreateProjectHandler(c *gin.Context) {
 		return
 	}
 
-	var request CreateProjectRequest
+	var request api.CreateProjectRequest
 	err = c.ShouldBindJSON(&request)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
@@ -66,11 +62,6 @@ func (s *projectHandlersStruct) CreateProjectHandler(c *gin.Context) {
 	})
 }
 
-type ProjectResponse struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
 func (s *projectHandlersStruct) GetProjectsHandler(c *gin.Context) {
 	user, err := getUserFromContext(c)
 	if err != nil {
@@ -95,11 +86,6 @@ func (s *projectHandlersStruct) GetProjectsHandler(c *gin.Context) {
 	})
 }
 
-type ChangeProjectRequest struct {
-	ID       string `json:"id" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
-
 func (s *projectHandlersStruct) ChangeProjectPasswordHandler(c *gin.Context) {
 	user, err := getUserFromContext(c)
 	if err != nil {
@@ -109,7 +95,7 @@ func (s *projectHandlersStruct) ChangeProjectPasswordHandler(c *gin.Context) {
 		return
 	}
 
-	var request ChangeProjectRequest
+	var request api.ChangeProjectRequest
 	err = c.ShouldBindJSON(&request)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
@@ -118,7 +104,15 @@ func (s *projectHandlersStruct) ChangeProjectPasswordHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.ProjectService.ChangeProjectPassword(request.ID, user.UserID, request.Password)
+	projectID := c.Param("project_id")
+	if projectID == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": "missing project ID in path",
+		})
+		return
+	}
+
+	err = db.ProjectService.ChangeProjectPassword(projectID, user.UserID, request.Password)
 	if err != nil {
 		if errors.Is(err, db.ErrProjectNotFound) {
 			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
@@ -144,10 +138,6 @@ func (s *projectHandlersStruct) ChangeProjectPasswordHandler(c *gin.Context) {
 	})
 }
 
-type DeleteProjectRequest struct {
-	ID string `json:"id" binding:"required"`
-}
-
 func (s *projectHandlersStruct) DeleteProjectHandler(c *gin.Context) {
 	user, err := getUserFromContext(c)
 	if err != nil {
@@ -157,16 +147,15 @@ func (s *projectHandlersStruct) DeleteProjectHandler(c *gin.Context) {
 		return
 	}
 
-	var request DeleteProjectRequest
-	err = c.ShouldBindJSON(&request)
-	if err != nil {
+	projectID := c.Param("project_id")
+	if projectID == "" {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"error": "missing project ID in path",
 		})
 		return
 	}
 
-	err = db.ProjectService.DeleteProject(request.ID, user.UserID)
+	err = db.ProjectService.DeleteProject(projectID, user.UserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, db.ErrProjectNotFound):
@@ -197,10 +186,10 @@ func getUserFromContext(c *gin.Context) (*utils.UserData, error) {
 }
 
 // ToResponseList converts a slice of Projects
-func toProjectResponseList(projects []db.Project) []ProjectResponse {
-	res := make([]ProjectResponse, len(projects))
+func toProjectResponseList(projects []db.Project) []api.ProjectResponse {
+	res := make([]api.ProjectResponse, len(projects))
 	for i, p := range projects {
-		res[i] = ProjectResponse{
+		res[i] = api.ProjectResponse{
 			ID:   p.ID,
 			Name: p.Name,
 		}
