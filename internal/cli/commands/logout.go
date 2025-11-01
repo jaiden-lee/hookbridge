@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jaiden-lee/hookbridge/internal/cli/config"
+	"github.com/jaiden-lee/hookbridge/internal/cli/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +15,17 @@ var logoutCmd = &cobra.Command{
 	Short: "signs out of current account",
 	Long:  `signs out of current account`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := config.DeleteUserConfig()
+		user, err := config.LoadUserConfig()
+
+		if err == nil {
+			_, _ = utils.PostWithAuth(
+				config.APIBaseURL+"/api/auth/logout",
+				nil,
+				user,
+			)
+		}
+
+		err = config.DeleteUserConfig()
 		if errors.Is(err, config.ErrNotSignedIn) {
 			fmt.Println("\nYou are not currently signed in")
 			fmt.Println()

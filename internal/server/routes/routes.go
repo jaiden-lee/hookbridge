@@ -28,6 +28,12 @@ func NewRouter() *gin.Engine {
 		projectRoutes.DELETE("/:project_id", handlers.ProjectHandlers.DeleteProjectHandler)
 	}
 
+	authRoutes := router.Group("/api/auth")
+	authRoutes.Use(middleware.AuthMiddleware())
+	{
+		authRoutes.POST("/logout", handlers.AuthHandlers.LogoutHandler)
+	}
+
 	connectionRoutes := router.Group("/api/connect")
 	{
 		connectionRoutes.POST("/:project_id", handlers.ConnectHandlers.ConnectToProjectHandler)
