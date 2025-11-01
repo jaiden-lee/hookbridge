@@ -9,13 +9,16 @@ import (
 	"context"
 	"strings"
 
+	"net/http"
+
 	"github.com/MicahParks/keyfunc"
 	jwt "github.com/golang-jwt/jwt/v4"
 	"github.com/workos/workos-go/v5/pkg/usermanagement"
 )
 
 type UserData struct {
-	UserID string
+	UserID    string
+	SessionID string
 }
 
 type AuthServiceStruct struct {
@@ -99,7 +102,12 @@ func (s *AuthServiceStruct) VerifyJWT(tokenB64 string) (*UserData, error) {
 		return nil, ErrInvalidJWT
 	}
 
-	return &UserData{UserID: userID}, nil
+	sessionID, ok := claims["sid"].(string)
+	if !ok {
+		return nil, ErrInvalidJWT
+	}
+
+	return &UserData{UserID: userID, SessionID: sessionID}, nil
 }
 
 func (s *AuthServiceStruct) fetchJWKs() {
@@ -120,4 +128,20 @@ func (s *AuthServiceStruct) fetchJWKs() {
 	}
 
 	s.JWKS = jwks
+}
+
+func (s *AuthServiceStruct) SignOutUser(sessionID string) {
+	url, err := usermanagement.GetLogoutURL(usermanagement.GetLogoutURLOpts{
+		SessionID: sessionID,
+	})
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	if err == nil {
+		res, err := client.Get(url.String())
+		if err == nil {
+			defer res.Body.Close()
+		}
+		// don't actually care about result, if it fails then it fails
+	}
+	// doesn't return anything, just assume automatic success
 }
