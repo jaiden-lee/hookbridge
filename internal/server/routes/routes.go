@@ -2,12 +2,17 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/jaiden-lee/hookbridge/internal/db"
 	"github.com/jaiden-lee/hookbridge/internal/server/handlers"
 	"github.com/jaiden-lee/hookbridge/internal/server/middleware"
 	"github.com/jaiden-lee/hookbridge/internal/server/utils"
 )
 
 func NewRouter() *gin.Engine {
+	_, err := db.InitDB("data/hookbridge.db", true)
+	if err != nil {
+		panic(err)
+	}
 	utils.AuthService.Init()
 
 	router := gin.New()
