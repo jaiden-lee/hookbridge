@@ -5,16 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
-	"time"
 
-	"context"
+	"log"
 
 	"github.com/google/go-querystring/query"
 	"github.com/jaiden-lee/hookbridge/internal/cli/config"
-	"github.com/workos/workos-go/v5/pkg/usermanagement"
+	"github.com/jaiden-lee/hookbridge/pkg/api"
 )
 
 type ErrorResponse struct {
@@ -83,41 +81,71 @@ func doRequestWithAuth(method string, uri string, requestBody any, user *config.
 	if response.StatusCode == http.StatusUnauthorized {
 		response.Body.Close() // close old one manually before retrying
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
+		refreshRequest := api.ExchangeRefreshTokenRequest{
+			RefreshToken: user.RefreshToken,
+		}
+		refreshBody, err := json.Marshal(refreshRequest)
+		if err != nil {
+			return nil, err
+		}
 
-		refreshResponse, err := usermanagement.AuthenticateWithRefreshToken(
-			ctx,
-			usermanagement.AuthenticateWithRefreshTokenOpts{
-				ClientID:     config.WorkOSClientID,
-				RefreshToken: user.RefreshToken,
-			},
+		refreshResponse, err := http.Post(
+			config.APIBaseURL+"/api/auth/refresh",
+			"application/json",
+			bytes.NewBuffer(refreshBody),
 		)
 
 		if err != nil {
-			var netErr net.Error
-			if errors.As(err, &netErr) {
-				// 🌐 Network-level error
-				return nil, ErrNetworkError
+			return nil, ErrUnexpected
+		}
+		defer refreshResponse.Body.Close()
+
+		log.Println(refreshResponse.StatusCode)
+
+		if refreshResponse.StatusCode < 200 || refreshResponse.StatusCode >= 300 {
+			// FAIL
+			var errResponse ErrorResponse
+
+			err = json.NewDecoder(refreshResponse.Body).Decode(&errResponse)
+			if err == nil {
+				// no error when decoding
+				log.Println(errResponse.Error)
+				// error field attached in response; failed
+				// config.DeleteUserConfig()
+				return nil, ErrRefreshTokenFail
 			}
 
-			// Otherwise, it’s likely an API (auth) error
-			// delete user config
-			config.DeleteUserConfig()
+			// otherwise, do generic error
+			return nil, ErrUnexpected
+		}
+
+		var refreshResponseBody api.ExchangeRefreshTokenResponse
+		err = json.NewDecoder(refreshResponse.Body).Decode(&refreshResponseBody)
+
+		if err != nil {
+			// generic error
 			return nil, ErrRefreshTokenFail
 		}
 
 		newUserConfig := config.UserConfig{
-			AccessToken:  refreshResponse.AccessToken,
-			RefreshToken: refreshResponse.RefreshToken,
+			AccessToken:  refreshResponseBody.AccessToken,
+			RefreshToken: refreshResponseBody.RefreshToken,
 			Email:        user.Email,
 		}
 
 		config.SaveUserConfig(&newUserConfig)
 
 		// retry request
-		request.Header.Set("Authorization", "Bearer "+newUserConfig.AccessToken)
-		response, err = http.DefaultClient.Do(request)
+		var retryBody io.Reader
+		if requestBody != nil {
+			jsonBody, _ := json.Marshal(requestBody)
+			retryBody = bytes.NewBuffer(jsonBody)
+		}
+		retryReq, _ := http.NewRequest(method, uri, retryBody)
+		retryReq.Header.Set("Content-Type", "application/json")
+		retryReq.Header.Set("Authorization", "Bearer "+newUserConfig.AccessToken)
+
+		response, err = http.DefaultClient.Do(retryReq)
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +153,7 @@ func doRequestWithAuth(method string, uri string, requestBody any, user *config.
 
 		if response.StatusCode == http.StatusUnauthorized {
 			// for some reason, unauthorized again; so just give up
-			config.DeleteUserConfig()
+			// config.DeleteUserConfig()
 			return nil, ErrRefreshTokenFail
 		}
 	}

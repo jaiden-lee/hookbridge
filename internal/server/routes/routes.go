@@ -34,9 +34,10 @@ func NewRouter() *gin.Engine {
 	}
 
 	authRoutes := router.Group("/api/auth")
-	authRoutes.Use(middleware.AuthMiddleware())
 	{
-		authRoutes.POST("/logout", handlers.AuthHandlers.LogoutHandler)
+		authRoutes.POST("/logout", middleware.AuthMiddleware(), handlers.AuthHandlers.LogoutHandler)
+
+		authRoutes.POST("/refresh", handlers.AuthHandlers.ExchangeRefreshTokenHandler)
 	}
 
 	connectionRoutes := router.Group("/api/connect")

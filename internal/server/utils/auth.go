@@ -145,3 +145,22 @@ func (s *AuthServiceStruct) SignOutUser(sessionID string) {
 	}
 	// doesn't return anything, just assume automatic success
 }
+
+func (s *AuthServiceStruct) ExchangeRefreshToken(refreshToken string) (*usermanagement.RefreshAuthenticationResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	refreshResponse, err := usermanagement.AuthenticateWithRefreshToken(
+		ctx,
+		usermanagement.AuthenticateWithRefreshTokenOpts{
+			ClientID:     s.ClientID,
+			RefreshToken: refreshToken,
+		},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &refreshResponse, nil
+}
