@@ -142,7 +142,7 @@ func (s projectServiceStruct) ChangeProjectPassword(projectID string, userID str
 func (s projectServiceStruct) DeleteProject(projectID string, userID string) error {
 	database := GetDB()
 
-	result := database.Where("user_id = ? AND user_id = ?", projectID, userID).
+	result := database.Where("id = ? AND user_id = ?", projectID, userID).
 		Delete(&Project{})
 
 	if result.Error != nil {
