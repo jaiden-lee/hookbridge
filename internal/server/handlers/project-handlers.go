@@ -81,8 +81,8 @@ func (s *projectHandlersStruct) GetProjectsHandler(c *gin.Context) {
 
 	projectsResponse := toProjectResponseList(projects)
 
-	c.JSON(http.StatusOK, gin.H{
-		"projects": projectsResponse,
+	c.JSON(http.StatusOK, api.ProjectsResponse{
+		Projects: projectsResponse,
 	})
 }
 

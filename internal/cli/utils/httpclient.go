@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"log"
-
 	"github.com/google/go-querystring/query"
 	"github.com/jaiden-lee/hookbridge/internal/cli/config"
 	"github.com/jaiden-lee/hookbridge/pkg/api"
@@ -100,8 +98,6 @@ func doRequestWithAuth(method string, uri string, requestBody any, user *config.
 		}
 		defer refreshResponse.Body.Close()
 
-		log.Println(refreshResponse.StatusCode)
-
 		if refreshResponse.StatusCode < 200 || refreshResponse.StatusCode >= 300 {
 			// FAIL
 			var errResponse ErrorResponse
@@ -109,7 +105,6 @@ func doRequestWithAuth(method string, uri string, requestBody any, user *config.
 			err = json.NewDecoder(refreshResponse.Body).Decode(&errResponse)
 			if err == nil {
 				// no error when decoding
-				log.Println(errResponse.Error)
 				// error field attached in response; failed
 				// config.DeleteUserConfig()
 				return nil, ErrRefreshTokenFail

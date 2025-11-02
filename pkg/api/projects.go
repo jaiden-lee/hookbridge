@@ -16,6 +16,10 @@ type ProjectResponse struct {
 	Name string `json:"name"`
 }
 
+type ProjectsResponse struct {
+	Projects []ProjectResponse `json:"projects"`
+}
+
 type MessageResponse struct {
 	Message string `json:"message"`
 }
