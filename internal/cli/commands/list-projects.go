@@ -13,8 +13,8 @@ import (
 )
 
 // projectsCmd represents the projects command
-var projectsCmd = &cobra.Command{
-	Use:   "projects",
+var listProjectsCmd = &cobra.Command{
+	Use:   "list",
 	Short: "displays a list of all projects",
 	Long: `displays a list of all projects user owns.
 must be logged in to use this method`,
@@ -58,15 +58,6 @@ must be logged in to use this method`,
 }
 
 func init() {
-	rootCmd.AddCommand(projectsCmd)
+	projectCmd.AddCommand(listProjectsCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// projectsCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// projectsCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

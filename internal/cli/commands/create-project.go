@@ -64,7 +64,7 @@ you must be signed in to use this command. `,
 }
 
 func init() {
-	rootCmd.AddCommand(createCmd)
+	projectCmd.AddCommand(createCmd)
 
 	// Define flags
 	createCmd.Flags().StringVarP(&projectName, "name", "n", "", "Name of the project")

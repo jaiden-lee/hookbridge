@@ -56,7 +56,7 @@ you must also be the owner/original creator of the specified project`,
 }
 
 func init() {
-	rootCmd.AddCommand(deleteCmd)
+	projectCmd.AddCommand(deleteCmd)
 
 	// Define flags
 	deleteCmd.Flags().StringVarP(&projectID, "id", "i", "", "ID of the project")
