@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 )
@@ -8,14 +9,14 @@ import (
 func startTunnel(tunnelName string) error {
 	// temporary container for testing
 	cmd := exec.Command(
-		"docker", "run",
-		"-it", "--name", tunnelName,
-		"ubuntu", "bash",
+		"docker", "run", "--rm", "-d",
+		"--name", tunnelName,
+		"nginx",
 	)
 
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return err
+		return fmt.Errorf("docker run failed: %w\n%s", err, string(out))
 	}
 
 	log.Println("Started container...")
