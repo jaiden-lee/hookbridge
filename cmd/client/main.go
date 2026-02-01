@@ -13,7 +13,7 @@ import (
 
 func main() {
 	conn, err := grpc.NewClient(
-		"http://localhost:50051",
+		"localhost:50051",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 
@@ -33,7 +33,7 @@ func main() {
 	_, err = client.OpenTunnel(ctx) // temporary, not testing the stream yet
 
 	if err != nil {
-		log.Fatal("failed to open tunnel/stream")
+		log.Fatalf("failed to open tunnel/stream\n %s", err)
 	}
 
 	log.Println("tunnel/stream created and connected")
