@@ -5,11 +5,12 @@ import (
 	"os/exec"
 )
 
-func startTunnel() error {
+func startTunnel(tunnelName string) error {
 	// temporary container for testing
 	cmd := exec.Command(
 		"docker", "run",
-		"-it", "ubuntu", "bash",
+		"-it", "--name", tunnelName,
+		"ubuntu", "bash",
 	)
 
 	err := cmd.Run()

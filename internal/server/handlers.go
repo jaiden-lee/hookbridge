@@ -5,6 +5,7 @@ import (
 	"hookbridge/internal/api"
 
 	"log"
+	"regexp"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,6 +26,13 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 		return
 	}
 
+	if !isValidTunnelName(requestBody.TunnelName) {
+		c.AbortWithStatusJSON(400, gin.H{
+			"error": "invalid tunnel name, no spaces or special characters besides _ and - are allowed",
+		})
+		return
+	}
+
 	log.Printf("Connecting to tunnel <%s>\n", requestBody.TunnelName)
 
 	_, tunnelExists := serverState.activeTunnels[requestBody.TunnelName]
@@ -32,7 +40,7 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 	if !tunnelExists {
 		log.Println("Tunnel doesn't exist. Creating tunnel...")
 		serverState.activeTunnels[requestBody.TunnelName] = true
-		err := startTunnel()
+		err := startTunnel(requestBody.TunnelName)
 		if err != nil {
 			c.AbortWithStatusJSON(500, gin.H{
 				"error": "internal server error, failed to start tunnel docker container",
@@ -41,4 +49,9 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 		}
 	}
 
+}
+
+func isValidTunnelName(tunnelName string) bool {
+	re := regexp.MustCompile(`^[A-Za-z0-9_-]+$`) // _, -, abc..., 123...    no space or special chars
+	return re.MatchString(tunnelName)
 }
