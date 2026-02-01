@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"hookbridge/internal/api"
+	"strings"
 
 	"log"
 	"regexp"
@@ -35,14 +36,16 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Connecting to tunnel <%s>\n", requestBody.TunnelName)
+	tunnelName := strings.ToLower(requestBody.TunnelName)
 
-	_, tunnelExists := serverState.activeTunnels[requestBody.TunnelName]
+	log.Printf("Connecting to tunnel <%s>\n", tunnelName)
+
+	_, tunnelExists := serverState.activeTunnels[tunnelName]
 
 	if !tunnelExists {
 		log.Println("Tunnel doesn't exist. Creating tunnel...")
-		serverState.activeTunnels[requestBody.TunnelName] = true
-		err := startTunnel(requestBody.TunnelName)
+		serverState.activeTunnels[tunnelName] = true
+		err := startTunnel(tunnelName)
 
 		if err != nil {
 			log.Println("Failed to start tunnel docker container")
