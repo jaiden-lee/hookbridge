@@ -7,7 +7,7 @@ func GetRouter() *gin.Engine {
 
 	router.GET("/", pingHandler)
 
-	router.POST("/api/connect")
+	router.POST("/api/connect", connectHandlers.connectOrCreateTunnel)
 
 	return router
 }
