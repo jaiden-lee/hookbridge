@@ -20,10 +20,18 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 	var requestBody api.ConnectToTunnelRequest
 
 	err := json.NewDecoder(c.Request.Body).Decode(&requestBody)
-	if err != nil || requestBody.TunnelName == "" { // body doesn't match
+	if err != nil {
 		log.Println("json request body was invalid")
 		c.AbortWithStatusJSON(400, gin.H{
 			"error": "invalid json request body",
+		})
+		return
+	}
+
+	if requestBody.TunnelName == "" {
+		log.Println("tunnel_name parameter was empty")
+		c.AbortWithStatusJSON(400, gin.H{
+			"error": "tunnel_name parameter is empty",
 		})
 		return
 	}
