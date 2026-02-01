@@ -20,6 +20,7 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 
 	err := json.NewDecoder(c.Request.Body).Decode(&requestBody)
 	if err != nil || requestBody.TunnelName == "" { // body doesn't match
+		log.Println("json request body was invalid")
 		c.AbortWithStatusJSON(400, gin.H{
 			"error": "invalid json request body",
 		})
@@ -27,6 +28,7 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 	}
 
 	if !isValidTunnelName(requestBody.TunnelName) {
+		log.Println("tunnel name was invalid; no special characters allowed")
 		c.AbortWithStatusJSON(400, gin.H{
 			"error": "invalid tunnel name, no spaces or special characters besides _ and - are allowed",
 		})
@@ -42,6 +44,9 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 		serverState.activeTunnels[requestBody.TunnelName] = true
 		err := startTunnel(requestBody.TunnelName)
 		if err != nil {
+			log.Println("Failed to start tunnel docker container")
+			log.Println(err)
+
 			c.AbortWithStatusJSON(500, gin.H{
 				"error": "internal server error, failed to start tunnel docker container",
 			})
