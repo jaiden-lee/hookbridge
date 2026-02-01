@@ -49,6 +49,7 @@ func ListenForClientMessage(stream tunnelv1.TunnelService_OpenTunnelServer) erro
 			return err
 		}
 
+		// no need to care about if we are the main client, since only one client ever sends
 		tunnelState.mainServerResponseChan <- messageHttpResponse
 	}
 }

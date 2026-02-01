@@ -13,6 +13,8 @@ import (
 func main() {
 	// primary owner is sent as part of the forwarded request as a tag
 	// when client receives, if it has that as primary owner, it will forward automatically
+	go tunnel.InitTunnelClient() // log.fatal is used to terminate entire program if fails to connect
+
 	lis, err := net.Listen("tcp", ":50051")
 
 	if err != nil {
