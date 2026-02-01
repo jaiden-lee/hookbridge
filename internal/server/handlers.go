@@ -22,6 +22,7 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 	err := json.NewDecoder(c.Request.Body).Decode(&requestBody)
 	if err != nil {
 		log.Println("json request body was invalid")
+		log.Println(err)
 		c.AbortWithStatusJSON(400, gin.H{
 			"error": "invalid json request body",
 		})

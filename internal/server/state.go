@@ -4,4 +4,6 @@ type serverStateStruct struct {
 	activeTunnels map[string]bool
 }
 
-var serverState = serverStateStruct{}
+var serverState = serverStateStruct{
+	activeTunnels: map[string]bool{},
+}
