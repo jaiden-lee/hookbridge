@@ -19,4 +19,6 @@ func startTunnel(tunnelName string) error {
 	}
 
 	log.Println("Started container...")
+
+	return nil
 }
