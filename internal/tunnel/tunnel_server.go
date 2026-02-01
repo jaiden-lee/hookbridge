@@ -28,16 +28,20 @@ func (server *TunnelServiceServerStruct) OpenTunnel(stream tunnelv1.TunnelServic
 
 	tunnelId := tunnelIdUUID.String()
 
-	tunnelState.clientsConnected[tunnelId] = make(chan int)
+	responseChannel := make(chan *tunnelv1.HttpResponse)
+	defer close(responseChannel)
 
-	ListenForClientMessage(stream)
+	tunnelState.clientsConnected[tunnelId] = responseChannel
+
+	ListenForClientMessage(responseChannel, stream) // blocking
 
 	return nil
 }
 
-func ListenForClientMessage(stream tunnelv1.TunnelService_OpenTunnelServer) error {
+// goroutine that sends channel is same that closes channel; no need to check if closed
+func ListenForClientMessage(responseChannel chan *tunnelv1.HttpResponse, stream tunnelv1.TunnelService_OpenTunnelServer) error {
 	for {
-		message, err := stream.Recv()
+		messageHttpResponse, err := stream.Recv()
 		if err != nil {
 			if isNormalDisconnect(err) {
 				return nil
@@ -45,6 +49,7 @@ func ListenForClientMessage(stream tunnelv1.TunnelService_OpenTunnelServer) erro
 			return err
 		}
 
+		responseChannel <- messageHttpResponse
 	}
 }
 
