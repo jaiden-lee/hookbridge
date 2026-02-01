@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package tunnel;
+
+option go_package = "hookbridge/proto/tunnel;tunnelpb";
+
+service TunnelService {
+    rpc OpenTunnel(stream HttpResponse) returns (stream HttpRequest);
+    // server sends the request, and the clients sends the response
+}
+
+
+message Header {
+    string key = 1;
+    string value = 2;
+}
+
+message HttpRequest {
+    string request_id = 1; // uuid
+    bool assigned_to_respond = 2;
+    string request_method = 3; // "GET", "POST", "PUT", "DELETE"
+    string path = 4; // "/api/v1/users"
+    string raw_query_params = 5; // "a=1&b=2"
+    bytes request_body = 6; // "{\"name\":\"John\",\"age\":30}" bytes
+    repeated Header headers = 7;
+}
+
+message HttpResponse {
+    string request_id = 1;
+    int32 status_code = 2;
+    bytes response_body = 3; // "{\"name\":\"John\",\"age\":30}" bytes
+    repeated Header headers = 4;
+}
