@@ -27,7 +27,7 @@ func StartGRPCServer() {
 	grpcServer := grpc.NewServer()
 	tunnelv1.RegisterTunnelServiceServer(grpcServer, &server.MainServerTunnelStruct{})
 
-	log.Println("grpc server listening on port 50051")
+	log.Println("grpc server listening on port 8081")
 	err = grpcServer.Serve(lis)
 	if err != nil {
 		log.Fatal(err)
