@@ -13,7 +13,7 @@ import (
 func InitTunnelClient() {
 	// address temporary right now
 	conn, err := grpc.NewClient(
-		"localhost:8081",
+		"docker.host.internal:8081",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 
