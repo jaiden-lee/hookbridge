@@ -53,8 +53,9 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 
 	if !tunnelExists {
 		log.Println("Tunnel doesn't exist. Creating tunnel...")
-		serverState.activeTunnels[tunnelName] = true
-		err := startTunnel(tunnelName, 50051)
+
+		port, err := startTunnel(tunnelName)
+		serverState.activeTunnels[tunnelName] = port
 
 		if err != nil {
 			log.Println("Failed to start tunnel docker container")
