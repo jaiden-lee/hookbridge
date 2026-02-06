@@ -11,7 +11,7 @@ func startTunnel(tunnelName string, port int) error {
 	portMapping := fmt.Sprintf("%d:50051", port)
 	// temporary container for testing
 	cmd := exec.Command(
-		"docker", "run", "-d",
+		"docker", "run", "--rm", "-d",
 		"--name", tunnelName,
 		"-e", nameEnvVar,
 		"--add-host=host.docker.internal:host-gateway",

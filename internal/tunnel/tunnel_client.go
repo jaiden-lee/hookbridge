@@ -8,6 +8,7 @@ import (
 
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 func InitTunnelClient() {
@@ -28,6 +29,9 @@ func InitTunnelClient() {
 	client := tunnelv1.NewTunnelServiceClient(conn)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	md := metadata.Pairs("tunnel-name", tunnelState.GetTunnelName())
+	ctx = metadata.NewOutgoingContext(ctx, md) // add metadata to current context
 
 	stream, err := client.OpenTunnel(ctx)
 	if err != nil {
