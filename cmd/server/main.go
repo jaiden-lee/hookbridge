@@ -1,23 +1,35 @@
 package main
 
 import (
+	"hookbridge/gen/tunnelv1"
+	"hookbridge/internal/server"
 	"log"
+	"net"
 
-	"github.com/jaiden-lee/hookbridge/internal/server/routes"
-	"github.com/joho/godotenv"
+	"google.golang.org/grpc"
 )
 
 func main() {
-	err := godotenv.Load("cmd/server/.env")
+	go StartGRPCServer()
+
+	router := server.GetRouter()
+	router.Run()
+}
+
+// run in goroutine
+func StartGRPCServer() {
+	lis, err := net.Listen("tcp", ":8081")
+
 	if err != nil {
-		log.Fatalf("Failed to load .env file")
+		log.Fatal(err)
 	}
-	router := routes.NewRouter()
 
-	log.Println("HookBridge server running on :8080")
+	grpcServer := grpc.NewServer()
+	tunnelv1.RegisterTunnelServiceServer(grpcServer, &server.MainServerTunnelStruct{})
 
-	err = router.Run(":8080")
+	log.Println("grpc server listening on port 8081")
+	err = grpcServer.Serve(lis)
 	if err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		log.Fatal(err)
 	}
 }
