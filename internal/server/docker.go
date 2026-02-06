@@ -6,15 +6,17 @@ import (
 	"os/exec"
 )
 
-func startTunnel(tunnelName string) error {
+func startTunnel(tunnelName string, port int) error {
 	nameEnvVar := "TUNNEL_NAME=" + tunnelName
+	portMapping := fmt.Sprintf("%d:50051", port)
 	// temporary container for testing
 	cmd := exec.Command(
-		"docker", "run", "--rm", "-d",
+		"docker", "run", "-d",
 		"--name", tunnelName,
 		"-e", nameEnvVar,
 		"--add-host=host.docker.internal:host-gateway",
-		"nginx",
+		"-p", portMapping,
+		"tunnel-image",
 	)
 
 	out, err := cmd.CombinedOutput()
