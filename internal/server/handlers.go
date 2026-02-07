@@ -49,12 +49,12 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 
 	log.Printf("Connecting to tunnel <%s>\n", tunnelName)
 
-	_, tunnelExists := serverState.activeTunnels[tunnelName]
+	port, tunnelExists := serverState.activeTunnels[tunnelName]
 
 	if !tunnelExists {
 		log.Println("Tunnel doesn't exist. Creating tunnel...")
 
-		port, err := startTunnel(tunnelName)
+		port, err = startTunnel(tunnelName)
 		serverState.activeTunnels[tunnelName] = port
 
 		if err != nil {
@@ -68,6 +68,12 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 		}
 	}
 
+	log.Printf("Tunnel is ready. Returning port number %d to client...\n", port)
+
+	c.JSON(200, api.ConnectToTunnelResponse{
+		TunnelIp: serverState.serverIp,
+		Port:     port,
+	})
 }
 
 func isValidTunnelName(tunnelName string) bool {
