@@ -8,6 +8,8 @@ import (
 	"log"
 	"regexp"
 
+	"hookbridge/gen/tunnelv1"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -54,12 +56,21 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 	if !tunnelExists {
 		log.Println("Tunnel doesn't exist. Creating tunnel...")
 
+		serverState.tunnelRequestChannels[tunnelName] = make(chan *tunnelv1.HttpRequest)
+		serverState.tunnelResponseCHannels[tunnelName] = make(chan *tunnelv1.HttpResponse)
 		port, err = startTunnel(tunnelName)
 		serverState.activeTunnels[tunnelName] = port
 
 		if err != nil {
 			log.Println("Failed to start tunnel docker container")
 			log.Println(err)
+
+			close(serverState.tunnelRequestChannels[tunnelName])
+			close(serverState.tunnelResponseCHannels[tunnelName])
+
+			delete(serverState.tunnelRequestChannels, tunnelName)
+			delete(serverState.tunnelResponseCHannels, tunnelName)
+			delete(serverState.activeTunnels, tunnelName)
 
 			c.AbortWithStatusJSON(500, gin.H{
 				"error": "internal server error, failed to start tunnel docker container",
