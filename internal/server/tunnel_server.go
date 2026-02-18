@@ -62,6 +62,7 @@ func (server *MainServerTunnelStruct) OpenTunnel(stream tunnelv1.TunnelService_O
 
 func tunnelResponseReceiver(stream tunnelv1.TunnelService_OpenTunnelServer, tunnelName string, responseChannel chan *tunnelv1.HttpResponse, ctx context.Context, cancel context.CancelFunc) {
 	defer cancel()
+	defer close(responseChannel)
 	for {
 		httpResponse, err := stream.Recv()
 		if err != nil {
@@ -72,7 +73,6 @@ func tunnelResponseReceiver(stream tunnelv1.TunnelService_OpenTunnelServer, tunn
 		select {
 		case <-ctx.Done():
 			// close from this thread, since it is the only goroutine that sends
-			close(responseChannel)
 			return
 		case responseChannel <- httpResponse:
 		}

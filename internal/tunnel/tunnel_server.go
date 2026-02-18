@@ -28,14 +28,19 @@ func (server *TunnelServiceServerStruct) OpenTunnel(stream tunnelv1.TunnelServic
 
 	tunnelId := tunnelIdUUID.String()
 
-	responseChannel := make(chan *tunnelv1.HttpResponse)
-	defer close(responseChannel)
+	requestChannel := make(chan *tunnelv1.HttpRequest, tunnelState.clientsConnectedBufferSize)
+	tunnelState.clientsConnectedLock.Lock()
+	tunnelState.clientsConnected[tunnelId] = requestChannel
+	tunnelState.clientsConnectedLock.Unlock()
 
-	tunnelState.clientsConnected[tunnelId] = responseChannel
+	defer disconnectClient(tunnelId)
 
-	ListenForClientMessage(stream) // blocking
+	// TODO: Add logic to receive from requestChannel
+	// TODO: Add logic to forward HttpRequest to client
+	// TODO: shared context?
 
-	return nil
+	err = ListenForClientMessage(stream) // blocking
+	return err
 }
 
 // goroutine that sends channel is same that closes channel; no need to check if closed
@@ -91,4 +96,19 @@ func isNormalDisconnect(err error) bool {
 	}
 
 	return false
+}
+
+func disconnectClient(tunnelId string) {
+	tunnelState.clientsConnectedLock.Lock()
+	defer tunnelState.clientsConnectedLock.Unlock()
+
+	_, ok := tunnelState.clientsConnected[tunnelId]
+	if ok {
+		delete(tunnelState.clientsConnected, tunnelId) // remove first
+	}
+
+	if ok {
+		// close(ch)
+		// closing not necessary SINCE CHANNELS ARE GARBAGE COLLECTED
+	}
 }

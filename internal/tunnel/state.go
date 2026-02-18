@@ -4,16 +4,20 @@ import (
 	"hookbridge/gen/tunnelv1"
 	"log"
 	"os"
+	"sync"
 )
 
 type tunnelStateStruct struct {
-	clientsConnected       map[string]chan *tunnelv1.HttpResponse
-	mainServerResponseChan chan *tunnelv1.HttpResponse
+	clientsConnected           map[string]chan *tunnelv1.HttpRequest
+	clientsConnectedLock       sync.RWMutex // no need to manually allocate
+	mainServerResponseChan     chan *tunnelv1.HttpResponse
+	clientsConnectedBufferSize int
 }
 
 var tunnelState = tunnelStateStruct{
-	clientsConnected:       map[string]chan *tunnelv1.HttpResponse{},
-	mainServerResponseChan: make(chan *tunnelv1.HttpResponse),
+	clientsConnected:           map[string]chan *tunnelv1.HttpRequest{},
+	mainServerResponseChan:     make(chan *tunnelv1.HttpResponse),
+	clientsConnectedBufferSize: 32, // probably won't ever get here
 }
 
 func (t *tunnelStateStruct) GetTunnelName() string {
