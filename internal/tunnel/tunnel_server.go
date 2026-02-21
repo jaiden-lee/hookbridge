@@ -134,6 +134,8 @@ func disconnectClient(tunnelId string) {
 	if ok {
 		// close(ch)
 		// closing not necessary SINCE CHANNELS ARE GARBAGE COLLECTED
+		// not closing will prevent race condition for tunnel_client.go when it broadcasts HttpRequests across all channels
+		// well technically it would be fine becasue it's all locked behind a mutex
 	}
 
 	// also check if this is the last clientsConnected; if all clients connected are 0, then shutdown container too

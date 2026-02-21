@@ -56,6 +56,7 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 	if !tunnelExists {
 		log.Println("Tunnel doesn't exist. Creating tunnel...")
 
+		// this is created beforehand, since tunnel dials server immediately; so needs to exist in map beforehand
 		serverState.tunnelRequestChannels[tunnelName] = make(chan *tunnelv1.HttpRequest)
 		serverState.tunnelResponseCHannels[tunnelName] = make(chan *tunnelv1.HttpResponse)
 		port, err = startTunnel(tunnelName)
@@ -65,18 +66,14 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 			log.Println("Failed to start tunnel docker container")
 			log.Println(err)
 
-			close(serverState.tunnelRequestChannels[tunnelName])
-			close(serverState.tunnelResponseCHannels[tunnelName])
-
-			delete(serverState.tunnelRequestChannels, tunnelName)
-			delete(serverState.tunnelResponseCHannels, tunnelName)
-			delete(serverState.activeTunnels, tunnelName)
+			cleanupTunnel(tunnelName)
 
 			c.AbortWithStatusJSON(500, gin.H{
 				"error": "internal server error, failed to start tunnel docker container",
 			})
 			return
 		}
+
 	}
 
 	log.Printf("Tunnel is ready. Returning port number %d to client...\n", port)
@@ -90,4 +87,23 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 func isValidTunnelName(tunnelName string) bool {
 	re := regexp.MustCompile(`^[A-Za-z0-9_-]+$`) // _, -, abc..., 123...    no space or special chars
 	return re.MatchString(tunnelName)
+}
+
+func cleanupTunnel(tunnelName string) {
+	_, ok := serverState.tunnelRequestChannels[tunnelName]
+	if ok {
+		// close(requestChan) let be garbage collected
+		delete(serverState.tunnelRequestChannels, tunnelName)
+	}
+
+	_, ok = serverState.tunnelResponseCHannels[tunnelName]
+	if ok {
+		// close(responseChan)
+		// don't close responseChan; let it be garbage collected
+		delete(serverState.tunnelResponseCHannels, tunnelName)
+	}
+
+	if _, ok = serverState.activeTunnels[tunnelName]; ok {
+		delete(serverState.activeTunnels, tunnelName) // port number
+	}
 }
