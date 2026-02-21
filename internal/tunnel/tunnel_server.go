@@ -38,9 +38,6 @@ func (server *TunnelServiceServerStruct) OpenTunnel(stream tunnelv1.TunnelServic
 	ctx, cancel := context.WithCancel(stream.Context())
 	defer cancel()
 
-	// TODO: Add logic to receive from requestChannel
-	// TODO: Add logic to forward HttpRequest to client
-	// TODO: shared context?
 	go SendRequestToClientThread(stream, ctx, cancel, requestChannel)
 
 	err = ListenForClientMessage(stream, ctx) // blocking
@@ -137,5 +134,10 @@ func disconnectClient(tunnelId string) {
 	if ok {
 		// close(ch)
 		// closing not necessary SINCE CHANNELS ARE GARBAGE COLLECTED
+	}
+
+	// also check if this is the last clientsConnected; if all clients connected are 0, then shutdown container too
+	if len(tunnelState.clientsConnected) == 0 {
+		tunnelState.shutdownFunc()
 	}
 }

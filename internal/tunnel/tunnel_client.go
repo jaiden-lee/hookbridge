@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"fmt"
 	"log"
 
 	"context"
@@ -12,7 +13,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func InitTunnelClient() {
+// once this finishes, it should terminate client
+func InitTunnelClient(mainCtx context.Context) error {
 	// address temporary right now
 	conn, err := grpc.NewClient(
 		"host.docker.internal:8081",
@@ -20,7 +22,7 @@ func InitTunnelClient() {
 	)
 
 	if err != nil {
-		log.Fatal("Failed to dial main server")
+		return fmt.Errorf("Failed to dial main server")
 	}
 
 	defer conn.Close()
@@ -28,7 +30,7 @@ func InitTunnelClient() {
 	log.Println("connected to main server!")
 
 	client := tunnelv1.NewTunnelServiceClient(conn)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(mainCtx)
 	defer cancel()
 
 	md := metadata.Pairs("tunnel-name", tunnelState.GetTunnelName())
@@ -36,7 +38,7 @@ func InitTunnelClient() {
 
 	stream, err := client.OpenTunnel(ctx)
 	if err != nil {
-		log.Fatalf("failed to open tunnel/stream\n %s", err)
+		return fmt.Errorf("failed to open tunnel/stream\n %s", err)
 	}
 
 	log.Println("tunnel to main server created and connected")
@@ -46,31 +48,33 @@ func InitTunnelClient() {
 	streamCtx, streamCancel := context.WithCancel(stream.Context())
 	defer streamCancel()
 
-	go ListenForHttpRequestFromMainServer(stream, streamCtx, streamCancel)
+	go ListenForHttpRequestFromMainServer(stream, streamCtx, streamCancel, mainCtx)
 
 	// forwards response to main server
 	for {
 		select {
 		case <-streamCtx.Done():
-			return
+			return nil
+		case <-mainCtx.Done():
+			return nil
 		case httpResponse, ok := <-tunnelState.mainServerResponseChan:
 			if !ok {
 				log.Printf("Channel closed, closing stream")
-				return
+				return nil
 			}
 
 			err = stream.Send(httpResponse) // can just forward same one; response_id doesn't matter
 			if err != nil {
 				// main server closed stream, exiting
 				log.Printf("Main server rejected HttpResponse, stream closed")
-				return
+				return nil
 			}
 		}
 
 	}
 }
 
-func ListenForHttpRequestFromMainServer(stream tunnelv1.TunnelService_OpenTunnelClient, streamCtx context.Context, streamCancel context.CancelFunc) {
+func ListenForHttpRequestFromMainServer(stream tunnelv1.TunnelService_OpenTunnelClient, streamCtx context.Context, streamCancel context.CancelFunc, mainCtx context.Context) {
 	defer streamCancel()
 
 	for {
@@ -84,6 +88,8 @@ func ListenForHttpRequestFromMainServer(stream tunnelv1.TunnelService_OpenTunnel
 		select {
 		case <-streamCtx.Done():
 			return
+		case <-mainCtx.Done():
+			return
 		default:
 		}
 
@@ -92,7 +98,7 @@ func ListenForHttpRequestFromMainServer(stream tunnelv1.TunnelService_OpenTunnel
 		// to prevent HOL blocking, I should just use a long buffer; using 32 for now
 		primaryClientID, success := GetRandomClientID()
 		if !success {
-			log.Printf("no clients connected, closing stream")
+			log.Printf("no clients connected, shutting down tunnel container")
 			return
 		}
 
@@ -114,6 +120,7 @@ func BroadcastHttpRequestToClientStreams(httpRequest *tunnelv1.HttpRequest, prim
 			msg = httpRequest
 		}
 
+		// non-blocking send
 		select {
 		case ch <- msg:
 		default:

@@ -12,6 +12,7 @@ type tunnelStateStruct struct {
 	clientsConnectedLock       sync.RWMutex // no need to manually allocate
 	mainServerResponseChan     chan *tunnelv1.HttpResponse
 	clientsConnectedBufferSize int
+	shutdownFunc               func()
 }
 
 var tunnelState = tunnelStateStruct{
@@ -28,6 +29,10 @@ func (t *tunnelStateStruct) GetTunnelName() string {
 	}
 
 	return tunnelName
+}
+
+func SetShutdownFunc(fn func()) {
+	tunnelState.shutdownFunc = fn
 }
 
 // TODO: add checks within main server in a goroutine to call docker wait to check if any error occurs??
