@@ -9,6 +9,7 @@ type serverStateStruct struct {
 	tunnelRequestChannels  map[string]chan *tunnelv1.HttpRequest
 	tunnelResponseCHannels map[string]chan *tunnelv1.HttpResponse
 	serverIp               string
+	requestTimeout         int // seconds
 }
 
 var serverState = serverStateStruct{
@@ -16,4 +17,5 @@ var serverState = serverStateStruct{
 	tunnelRequestChannels:  map[string]chan *tunnelv1.HttpRequest{},
 	tunnelResponseCHannels: map[string]chan *tunnelv1.HttpResponse{},
 	serverIp:               "localhost",
+	requestTimeout:         300,
 }

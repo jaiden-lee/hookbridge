@@ -34,7 +34,7 @@ func (server *MainServerTunnelStruct) OpenTunnel(stream tunnelv1.TunnelService_O
 	requestChannel, requestExists := serverState.tunnelRequestChannels[tunnelName]
 	responseChannel, responseExists := serverState.tunnelResponseCHannels[tunnelName]
 	defer close(requestChannel)
-	defer cleanupTunnel(tunnelName) // not an issue to call twice, since I check if its in map first
+	defer cleanupTunnel(tunnelName)
 
 	if !requestExists || !responseExists {
 		return nil // channel doesn't exist, should never happen since API should create channel before client can connect to it
@@ -66,7 +66,6 @@ func (server *MainServerTunnelStruct) OpenTunnel(stream tunnelv1.TunnelService_O
 func tunnelResponseReceiver(stream tunnelv1.TunnelService_OpenTunnelServer, tunnelName string, responseChannel chan *tunnelv1.HttpResponse, ctx context.Context, cancel context.CancelFunc) {
 	defer cancel()
 	defer close(responseChannel)
-	defer cleanupTunnel(tunnelName)
 
 	for {
 		httpResponse, err := stream.Recv()

@@ -1,9 +1,12 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"hookbridge/internal/api"
+	"io"
 	"strings"
+	"time"
 
 	"log"
 	"regexp"
@@ -11,12 +14,14 @@ import (
 	"hookbridge/gen/tunnelv1"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type connectHandlersStruct struct{}
 type tunnelHandlersStruct struct{}
 
 var connectHandlers = connectHandlersStruct{}
+var tunnelHandlers = tunnelHandlersStruct{}
 
 func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 	var requestBody api.ConnectToTunnelRequest
@@ -82,6 +87,136 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 		TunnelIp: serverState.serverIp,
 		Port:     port,
 	})
+}
+
+func (_ *tunnelHandlersStruct) handleHttpRequestForTunnel(c *gin.Context) {
+	tunnelName := c.Param("tunnel_name")
+	proxyPath := c.Param("proxyPath") // includes leading /
+	queryParams := c.Request.URL.RawQuery
+
+	requestChannel, requestExists := serverState.tunnelRequestChannels[tunnelName]
+	responseChannel, responseExists := serverState.tunnelResponseCHannels[tunnelName]
+	if !requestExists || !responseExists {
+		c.AbortWithStatusJSON(400, gin.H{
+			"error": "This tunnel doesn't exist",
+		})
+		return
+	}
+
+	// Create the protobuf HttpRequest
+	requestId, err := uuid.NewUUID()
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{
+			"error": "Failed to generate ID for the request. Try again later.",
+		})
+		return
+	}
+
+	requestMethod := c.Request.Method
+	if requestMethod == "" { // empty string also means GET
+		requestMethod = "GET"
+	}
+
+	requestBody, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{
+			"error": "Failed to read request body. Try again later.",
+		})
+		return
+	}
+
+	requestHeaders := []*tunnelv1.Header{}
+	for key, value := range c.Request.Header {
+		header := tunnelv1.Header{
+			Key:   key,
+			Value: strings.Join(value, ", "),
+		}
+		requestHeaders = append(requestHeaders, &header)
+	}
+
+	httpRequest := &tunnelv1.HttpRequest{
+		RequestId:         requestId.String(),
+		AssignedToRespond: false, // this gets chosen later
+		RequestMethod:     requestMethod,
+		Path:              proxyPath,
+		RawQueryParams:    queryParams, // no ? included
+		RequestBody:       requestBody,
+		Headers:           requestHeaders,
+	}
+
+	// Set timeout context
+	timeoutContext, cancel := context.WithTimeout(c.Request.Context(), time.Duration(serverState.requestTimeout)*time.Second)
+	defer cancel() // still need cancel to free resources
+
+	// Forward HttpRequest
+	select {
+	case <-timeoutContext.Done():
+		c.AbortWithStatusJSON(408, gin.H{
+			"error": "Request timeout or request was cancelled",
+		})
+		return
+	case requestChannel <- httpRequest:
+	}
+
+	// Listen for HttpResponse
+	select {
+	case <-timeoutContext.Done():
+		c.AbortWithStatusJSON(408, gin.H{
+			"error": "Request timeout or request was cancelled",
+		})
+		return
+	case httpResponse, ok := <-responseChannel:
+		if !ok {
+			c.AbortWithStatusJSON(400, gin.H{
+				"error": "Tunnel was closed while this request was processing.",
+			})
+			return
+		}
+		// return httpresponse
+		contentType := "application/octet-stream"
+		for _, h := range httpResponse.Headers {
+			k := h.Key
+			v := h.Value
+
+			// Skip hop-by-hop headers
+			if isHopByHopHeader(k) {
+				continue
+			}
+
+			if strings.EqualFold(k, "Content-Type") {
+				contentType = v
+				c.Writer.Header().Set(k, v) // don't Add
+				continue
+			}
+
+			if strings.EqualFold(k, "Set-Cookie") {
+				c.Writer.Header().Add(k, v) // can repeat
+				continue
+			}
+
+			// Most headers should be Set (single value)
+			c.Writer.Header().Set(k, v)
+		}
+
+		c.Data(int(httpResponse.StatusCode), contentType, httpResponse.ResponseBody)
+		return
+	}
+}
+
+func isHopByHopHeader(k string) bool {
+	switch {
+	case strings.EqualFold(k, "Connection"),
+		strings.EqualFold(k, "Keep-Alive"),
+		strings.EqualFold(k, "Proxy-Authenticate"),
+		strings.EqualFold(k, "Proxy-Authorization"),
+		strings.EqualFold(k, "TE"),
+		strings.EqualFold(k, "Trailer"),
+		strings.EqualFold(k, "Transfer-Encoding"),
+		strings.EqualFold(k, "Upgrade"):
+		return true
+	default:
+		return false
+	}
 }
 
 func isValidTunnelName(tunnelName string) bool {
