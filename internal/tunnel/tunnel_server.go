@@ -28,18 +28,43 @@ func (server *TunnelServiceServerStruct) OpenTunnel(stream tunnelv1.TunnelServic
 
 	tunnelId := tunnelIdUUID.String()
 
-	responseChannel := make(chan *tunnelv1.HttpResponse)
-	defer close(responseChannel)
+	requestChannel := make(chan *tunnelv1.HttpRequest, tunnelState.clientsConnectedBufferSize)
+	tunnelState.clientsConnectedLock.Lock()
+	tunnelState.clientsConnected[tunnelId] = requestChannel
+	tunnelState.clientsConnectedLock.Unlock()
 
-	tunnelState.clientsConnected[tunnelId] = responseChannel
+	defer disconnectClient(tunnelId)
 
-	ListenForClientMessage(stream) // blocking
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
 
-	return nil
+	go SendRequestToClientThread(stream, ctx, cancel, requestChannel)
+
+	err = ListenForClientMessage(stream, ctx) // blocking
+	return err
+}
+
+func SendRequestToClientThread(stream tunnelv1.TunnelService_OpenTunnelServer, ctx context.Context, cancel context.CancelFunc, requestChannel chan *tunnelv1.HttpRequest) {
+	defer cancel()
+	for {
+		// listen for either incoming message, or stream is closed/context done
+		select {
+		case <-ctx.Done():
+			log.Println("Stream closed, client is disconnected")
+			return
+		case httpRequest, ok := <-requestChannel:
+			if !ok {
+				log.Println("Request channel closed, means client was disconnected")
+				return
+			}
+			// this httpRequest may be primary or not
+			stream.Send(httpRequest)
+		}
+	}
 }
 
 // goroutine that sends channel is same that closes channel; no need to check if closed
-func ListenForClientMessage(stream tunnelv1.TunnelService_OpenTunnelServer) error {
+func ListenForClientMessage(stream tunnelv1.TunnelService_OpenTunnelServer, ctx context.Context) error {
 	for {
 		messageHttpResponse, err := stream.Recv()
 		if err != nil {
@@ -49,8 +74,12 @@ func ListenForClientMessage(stream tunnelv1.TunnelService_OpenTunnelServer) erro
 			return err
 		}
 
-		// no need to care about if we are the main client, since only one client ever sends
-		tunnelState.mainServerResponseChan <- messageHttpResponse
+		select {
+		case <-ctx.Done():
+			return nil
+		case tunnelState.mainServerResponseChan <- messageHttpResponse: // unbuffered, will wait, so need to add to this select statement, since we're waiting on both
+			// no need to care about if we are the main client, since only one client ever sends
+		}
 	}
 }
 
@@ -91,4 +120,26 @@ func isNormalDisconnect(err error) bool {
 	}
 
 	return false
+}
+
+func disconnectClient(tunnelId string) {
+	tunnelState.clientsConnectedLock.Lock()
+	defer tunnelState.clientsConnectedLock.Unlock()
+
+	_, ok := tunnelState.clientsConnected[tunnelId]
+	if ok {
+		delete(tunnelState.clientsConnected, tunnelId) // remove first
+	}
+
+	if ok {
+		// close(ch)
+		// closing not necessary SINCE CHANNELS ARE GARBAGE COLLECTED
+		// not closing will prevent race condition for tunnel_client.go when it broadcasts HttpRequests across all channels
+		// well technically it would be fine becasue it's all locked behind a mutex
+	}
+
+	// also check if this is the last clientsConnected; if all clients connected are 0, then shutdown container too
+	if len(tunnelState.clientsConnected) == 0 {
+		tunnelState.shutdownFunc()
+	}
 }

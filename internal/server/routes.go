@@ -9,6 +9,8 @@ func GetRouter() *gin.Engine {
 
 	router.POST("/api/connect", connectHandlers.connectOrCreateTunnel)
 
+	router.Any("/tunnel/:tunnel_name/*proxyPath", tunnelHandlers.handleHttpRequestForTunnel)
+
 	return router
 }
 

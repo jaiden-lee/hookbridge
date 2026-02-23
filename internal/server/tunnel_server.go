@@ -4,6 +4,8 @@ import (
 	"hookbridge/gen/tunnelv1"
 	"log"
 
+	"context"
+
 	"google.golang.org/grpc/metadata"
 )
 
@@ -25,13 +27,59 @@ func (server *MainServerTunnelStruct) OpenTunnel(stream tunnelv1.TunnelService_O
 	}
 
 	log.Printf("New tunnel connection from tunnel name: %s", tunnelName)
-	// need a way to determine which client this is from?
-	// we can't use random id
-	// API needs to know which channel to forward this to
-	// OR, I can do requests/response, and instead, we dial the other container?
-	// and the other container runs a server?
-	// or else i need like a welcome message?
-	//
-	return nil
 
+	// need to use a channel for the tunnel name
+	// when an API request is received on the wildcard endpoint, send signal to channel
+	// causes this thread to wake up and then forward that message through stream
+	requestChannel, requestExists := serverState.tunnelRequestChannels[tunnelName]
+	responseChannel, responseExists := serverState.tunnelResponseCHannels[tunnelName]
+	defer close(requestChannel)
+	defer cleanupTunnel(tunnelName)
+
+	if !requestExists || !responseExists {
+		return nil // channel doesn't exist, should never happen since API should create channel before client can connect to it
+	}
+
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+
+	go tunnelResponseReceiver(stream, tunnelName, responseChannel, ctx, cancel)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+
+		case httpRequest, ok := <-requestChannel:
+			if !ok {
+				log.Printf("Request channel for tunnel %s closed", tunnelName)
+				return nil
+			}
+			err := stream.Send(httpRequest)
+			if err != nil {
+				log.Printf("Error sending message through tunnel stream for tunnel %s: %v", tunnelName, err)
+				return err
+			}
+		}
+	}
+}
+
+func tunnelResponseReceiver(stream tunnelv1.TunnelService_OpenTunnelServer, tunnelName string, responseChannel chan *tunnelv1.HttpResponse, ctx context.Context, cancel context.CancelFunc) {
+	defer cancel()
+	defer close(responseChannel)
+
+	for {
+		httpResponse, err := stream.Recv()
+		if err != nil {
+			log.Printf("Tunnel %s disconnected", tunnelName)
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			// close from this thread, since it is the only goroutine that sends
+			return
+		case responseChannel <- httpResponse:
+		}
+
+	}
 }
