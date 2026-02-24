@@ -139,7 +139,5 @@ func disconnectClient(tunnelId string) {
 	}
 
 	// also check if this is the last clientsConnected; if all clients connected are 0, then shutdown container too
-	if len(tunnelState.clientsConnected) == 0 {
-		tunnelState.shutdownFunc()
-	}
+	DisconnectCountdown()
 }

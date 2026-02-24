@@ -63,7 +63,7 @@ func (_ *connectHandlersStruct) connectOrCreateTunnel(c *gin.Context) {
 
 		// this is created beforehand, since tunnel dials server immediately; so needs to exist in map beforehand
 		serverState.tunnelRequestChannels[tunnelName] = make(chan *tunnelv1.HttpRequest)
-		serverState.tunnelResponseCHannels[tunnelName] = make(chan *tunnelv1.HttpResponse)
+		// serverState.tunnelResponseCHannels[tunnelName] = make(chan *tunnelv1.HttpResponse)
 		port, err = startTunnel(tunnelName)
 		serverState.activeTunnels[tunnelName] = port
 
@@ -95,8 +95,8 @@ func (_ *tunnelHandlersStruct) handleHttpRequestForTunnel(c *gin.Context) {
 	queryParams := c.Request.URL.RawQuery
 
 	requestChannel, requestExists := serverState.tunnelRequestChannels[tunnelName]
-	responseChannel, responseExists := serverState.tunnelResponseCHannels[tunnelName]
-	if !requestExists || !responseExists {
+
+	if !requestExists {
 		c.AbortWithStatusJSON(400, gin.H{
 			"error": "This tunnel doesn't exist",
 		})
@@ -111,6 +111,11 @@ func (_ *tunnelHandlersStruct) handleHttpRequestForTunnel(c *gin.Context) {
 		})
 		return
 	}
+	requestIdStr := requestId.String()
+
+	responseChannel := make(chan *tunnelv1.HttpResponse, 1) // nonblocking on sender side
+	serverState.tunnelResponseCHannels[requestIdStr] = responseChannel
+	defer cleanupRequest(requestIdStr)
 
 	requestMethod := c.Request.Method
 	if requestMethod == "" { // empty string also means GET
@@ -135,7 +140,7 @@ func (_ *tunnelHandlersStruct) handleHttpRequestForTunnel(c *gin.Context) {
 	}
 
 	httpRequest := &tunnelv1.HttpRequest{
-		RequestId:         requestId.String(),
+		RequestId:         requestIdStr,
 		AssignedToRespond: false, // this gets chosen later
 		RequestMethod:     requestMethod,
 		Path:              proxyPath,
@@ -231,14 +236,23 @@ func cleanupTunnel(tunnelName string) {
 		delete(serverState.tunnelRequestChannels, tunnelName)
 	}
 
-	_, ok = serverState.tunnelResponseCHannels[tunnelName]
-	if ok {
-		// close(responseChan)
-		// don't close responseChan; let it be garbage collected
-		delete(serverState.tunnelResponseCHannels, tunnelName)
-	}
+	// _, ok = serverState.tunnelResponseCHannels[tunnelName]
+	// if ok {
+	// 	// close(responseChan)
+	// 	// don't close responseChan; let it be garbage collected
+	// 	delete(serverState.tunnelResponseCHannels, tunnelName)
+	// }
 
 	if _, ok = serverState.activeTunnels[tunnelName]; ok {
 		delete(serverState.activeTunnels, tunnelName) // port number
+	}
+}
+
+func cleanupRequest(requestId string) {
+	_, ok := serverState.tunnelResponseCHannels[requestId]
+	if ok {
+		// close(responseChan)
+		// don't close responseChan; let it be garbage collected
+		delete(serverState.tunnelResponseCHannels, requestId)
 	}
 }
