@@ -42,10 +42,11 @@ func DisconnectCountdown() {
 	time.AfterFunc(time.Duration(tunnelState.shutdownTimer)*time.Second, func() {
 		log.Println("Shutting down, since no clients have been connected in 2 minutes.")
 		tunnelState.clientsConnectedLock.RLock()
+		defer tunnelState.clientsConnectedLock.RUnlock()
 		if len(tunnelState.clientsConnected) == 0 {
 			tunnelState.shutdownFunc()
 		}
-		tunnelState.clientsConnectedLock.RUnlock()
+
 	})
 }
 
