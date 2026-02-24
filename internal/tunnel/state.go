@@ -46,7 +46,6 @@ func DisconnectCountdown() {
 		if len(tunnelState.clientsConnected) == 0 {
 			tunnelState.shutdownFunc()
 		}
-
 	})
 }
 

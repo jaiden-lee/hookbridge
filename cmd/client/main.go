@@ -1,40 +1,59 @@
 package main
 
 import (
-	"hookbridge/gen/tunnelv1"
-	"log"
-
 	"context"
-	"time"
+	"fmt"
+	"hookbridge/internal/client"
+	"os"
+	"os/signal"
+	"syscall"
 
-	grpc "google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"github.com/spf13/cobra"
 )
 
 func main() {
-	conn, err := grpc.NewClient(
-		"localhost:50051",
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	if err := newRootCmd().Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func newRootCmd() *cobra.Command {
+	var (
+		name      string
+		port      int
+		serverURL string
 	)
 
-	if err != nil {
-		log.Fatal("Failed to dial grpc server")
+	rootCmd := &cobra.Command{
+		Use:   "hookbridge",
+		Short: "Hookbridge CLI",
 	}
 
-	defer conn.Close()
+	connectCmd := &cobra.Command{
+		Use:   "connect",
+		Short: "Connect to a tunnel and proxy requests to a local HTTP server",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
 
-	log.Println("connected to grpc server!")
+			cfg := client.ConnectConfig{
+				Name:      name,
+				LocalPort: port,
+				ServerURL: serverURL,
+			}
 
-	client := tunnelv1.NewTunnelServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	_, err = client.OpenTunnel(ctx) // temporary, not testing the stream yet
-
-	if err != nil {
-		log.Fatalf("failed to open tunnel/stream\n %s", err)
+			return client.RunConnect(ctx, cfg)
+		},
 	}
 
-	log.Println("tunnel/stream created and connected")
+	connectCmd.Flags().StringVar(&name, "name", "", "Tunnel name")
+	connectCmd.Flags().IntVar(&port, "port", 0, "Local HTTP server port")
+	connectCmd.Flags().StringVar(&serverURL, "server", "http://localhost:8080", "Hookbridge server base URL")
+	_ = connectCmd.MarkFlagRequired("name")
+	_ = connectCmd.MarkFlagRequired("port")
+
+	rootCmd.AddCommand(connectCmd)
+
+	return rootCmd
 }
