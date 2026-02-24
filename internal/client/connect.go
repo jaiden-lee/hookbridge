@@ -224,6 +224,9 @@ func processRequests(
 				defer wg.Done()
 
 				httpResp := forwardToLocalHTTP(ctx, httpClient, httpReq, localPort)
+				if httpResp == nil {
+					return
+				}
 				select {
 				case <-ctx.Done():
 				case responseCh <- httpResp:
@@ -274,6 +277,10 @@ func sendToStream(
 }
 
 func forwardToLocalHTTP(ctx context.Context, httpClient *http.Client, grpcRequest *tunnelv1.HttpRequest, localPort int) *tunnelv1.HttpResponse {
+	if !grpcRequest.GetAssignedToRespond() {
+		return nil
+	}
+
 	requestURL := buildLocalURL(localPort, grpcRequest.GetPath(), grpcRequest.GetRawQueryParams())
 
 	method := grpcRequest.GetRequestMethod()
