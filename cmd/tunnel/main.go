@@ -20,6 +20,7 @@ func main() {
 	// when client receives, if it has that as primary owner, it will forward automatically
 	mainCtx, mainCancel := context.WithCancel(context.Background())
 	tunnel.SetShutdownFunc(mainCancel)
+	tunnel.DisconnectCountdown()
 
 	tunnelClientErr := make(chan error, 1)
 	go func() {
