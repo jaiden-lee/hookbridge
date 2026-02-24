@@ -7,7 +7,7 @@ import (
 type serverStateStruct struct {
 	activeTunnels          map[string]int // tunnelName -> port number
 	tunnelRequestChannels  map[string]chan *tunnelv1.HttpRequest
-	tunnelResponseCHannels map[string]chan *tunnelv1.HttpResponse
+	tunnelResponseCHannels map[string]chan *tunnelv1.HttpResponse // request UUID --> channel
 	serverIp               string
 	requestTimeout         int // seconds
 }

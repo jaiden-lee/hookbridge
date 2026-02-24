@@ -32,18 +32,18 @@ func (server *MainServerTunnelStruct) OpenTunnel(stream tunnelv1.TunnelService_O
 	// when an API request is received on the wildcard endpoint, send signal to channel
 	// causes this thread to wake up and then forward that message through stream
 	requestChannel, requestExists := serverState.tunnelRequestChannels[tunnelName]
-	responseChannel, responseExists := serverState.tunnelResponseCHannels[tunnelName]
+	// responseChannel, responseExists := serverState.tunnelResponseCHannels[tunnelName]
 	defer close(requestChannel)
 	defer cleanupTunnel(tunnelName)
 
-	if !requestExists || !responseExists {
+	if !requestExists {
 		return nil // channel doesn't exist, should never happen since API should create channel before client can connect to it
 	}
 
 	ctx, cancel := context.WithCancel(stream.Context())
 	defer cancel()
 
-	go tunnelResponseReceiver(stream, tunnelName, responseChannel, ctx, cancel)
+	go tunnelResponseReceiver(stream, tunnelName, ctx, cancel)
 	for {
 		select {
 		case <-ctx.Done():
@@ -63,9 +63,9 @@ func (server *MainServerTunnelStruct) OpenTunnel(stream tunnelv1.TunnelService_O
 	}
 }
 
-func tunnelResponseReceiver(stream tunnelv1.TunnelService_OpenTunnelServer, tunnelName string, responseChannel chan *tunnelv1.HttpResponse, ctx context.Context, cancel context.CancelFunc) {
+func tunnelResponseReceiver(stream tunnelv1.TunnelService_OpenTunnelServer, tunnelName string, ctx context.Context, cancel context.CancelFunc) {
 	defer cancel()
-	defer close(responseChannel)
+	// defer close(responseChannel)
 
 	for {
 		httpResponse, err := stream.Recv()
@@ -74,11 +74,24 @@ func tunnelResponseReceiver(stream tunnelv1.TunnelService_OpenTunnelServer, tunn
 			return
 		}
 
+		requestId := httpResponse.RequestId
+		responseChannel, responseExists := serverState.tunnelResponseCHannels[requestId]
+		if !responseExists {
+			log.Printf("No response channel for requestId, skipping request")
+			continue
+		}
+
+		select { // make cancellation deterministic, so it runs first; prevents race condition if both are ready at same time
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		select {
 		case <-ctx.Done():
 			// close from this thread, since it is the only goroutine that sends
 			return
-		case responseChannel <- httpResponse:
+		case responseChannel <- httpResponse: // nonblocking operation, should send immediately, unless ctx.Done is ready
 		}
 
 	}
